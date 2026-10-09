@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAccount } from 'wagmi'
 import { ConnectKitButton } from 'connectkit'
-import { Send, PiggyBank, Landmark, Zap, ArrowLeftRight } from 'lucide-react'
+import { Send, PiggyBank, Landmark, Zap, ArrowLeftRight, Wallet, X } from 'lucide-react'
 import { P2PPayments } from '@/tabs/P2PPayments'
 import { SavingsPoolTab } from '@/tabs/SavingsPool'
 import { LendingPoolTab } from '@/tabs/LendingPool'
@@ -22,13 +22,50 @@ const TABS: { id: Tab; label: string; icon: React.ReactNode; short: string }[] =
 export default function App() {
   const { address, isConnected } = useAccount()
   const [activeTab, setActiveTab] = useState<Tab>(() => {
-    // Start on P2P tab if a payment request link is opened
     const params = new URLSearchParams(window.location.search)
     return params.get('pay') ? 'p2p' : 'p2p'
   })
+  const [bannerDismissed, setBannerDismissed] = useState(false)
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    const t = setTimeout(() => setMounted(true), 800)
+    return () => clearTimeout(t)
+  }, [])
+
+  const showBanner = mounted && !isConnected && !bannerDismissed
 
   return (
     <div className="min-h-dvh" style={{ background: 'var(--bg-gradient)' }}>
+
+      {/* Wallet connection notification banner */}
+      <div
+        className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-sm
+          transition-all duration-500 ease-out
+          ${showBanner ? 'opacity-100 translate-y-0 pointer-events-auto' : 'opacity-0 -translate-y-4 pointer-events-none'}`}
+      >
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 shadow-lg shadow-amber-100/60 px-4 py-3 flex items-start gap-3">
+          <div className="mt-0.5 flex-shrink-0 w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center">
+            <Wallet size={16} className="text-amber-600" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-amber-900">Connect your wallet to continue</p>
+            <p className="text-xs text-amber-700 mt-0.5">
+              Arc Bay requires a wallet to send, save, lend, and swap USDC on Arc.
+            </p>
+            <div className="mt-2">
+              <ConnectKitButton label="Connect Wallet" />
+            </div>
+          </div>
+          <button
+            onClick={() => setBannerDismissed(true)}
+            className="flex-shrink-0 text-amber-400 hover:text-amber-600 transition-colors mt-0.5"
+          >
+            <X size={16} />
+          </button>
+        </div>
+      </div>
+
       {/* Header */}
       <header className="sticky top-0 z-20 backdrop-blur-md border-b border-[var(--border)] bg-white/60">
         <div className="mx-auto max-w-lg px-4 py-3 flex items-center justify-between">
