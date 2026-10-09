@@ -1,12 +1,14 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt, useSwitchChain } from 'wagmi'
 import { PiggyBank, TrendingUp, Lock } from 'lucide-react'
+import { toast } from 'sonner'
 import { Card, CardLabel, CardValue } from '@/components/Card'
 import { TxButton } from '@/components/TxButton'
 import { AmountInput } from '@/components/AmountInput'
 import { TxStatus } from '@/components/TxStatus'
 import { USDC_ADDRESS, ERC20_ABI, SAVINGS_POOL_ABI, SAVINGS_POOL_ADDRESS, ARC_TESTNET_CHAIN_ID } from '@/lib/contracts'
 import { parseUsdc, formatUsdc, parseOnchainError } from '@/lib/utils'
+import { buildTxExplorerUrl } from '@/onchain-facts'
 
 const NOT_DEPLOYED = !SAVINGS_POOL_ADDRESS
 
@@ -65,6 +67,29 @@ export function SavingsPoolTab() {
   const { isLoading: isConfirming, isSuccess, isError, error } = useWaitForTransactionReceipt({ hash })
 
   const apyPct = apyBps ? (Number(apyBps) / 100).toFixed(1) : '—'
+
+  // Toasts via isSuccess — only show toast, no setState here
+  useEffect(() => {
+    if (isSuccess && hash) {
+      if (tab === 'deposit') {
+        toast.success(`Deposited ${amount} USDC into Savings Pool`, {
+          description: `Earning ${apyPct}% APY — withdraw anytime.`,
+          action: { label: 'View tx', onClick: () => window.open(buildTxExplorerUrl(ARC_TESTNET_CHAIN_ID, hash), '_blank') },
+          duration: 6000,
+        })
+      } else {
+        toast.success(`Withdrew ${amount} USDC + yield`, {
+          description: 'Funds returned to your wallet.',
+          action: { label: 'View tx', onClick: () => window.open(buildTxExplorerUrl(ARC_TESTNET_CHAIN_ID, hash), '_blank') },
+          duration: 6000,
+        })
+      }
+    }
+  }, [isSuccess, hash]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (isError && error) toast.error('Transaction failed', { description: parseOnchainError(error) })
+  }, [isError, error])
 
   function handleDeposit() {
     setErrorMsg('')

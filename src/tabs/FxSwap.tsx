@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { toast } from 'sonner'
 import { useAccount, useSwitchChain } from 'wagmi'
 import type { EIP1193Provider } from 'viem'
 import { AppKit, type SwapEstimate } from '@circle-fin/app-kit'
@@ -88,12 +89,19 @@ export function FxSwap() {
         })
       )
       .then(() => {
-        setSuccessMsg(`Swapped ${quote.amount} ${inToken} to ${outToken}!`)
+        const msg = `Swapped ${quote.amount} ${inToken} → ${outToken}`
+        setSuccessMsg(msg)
+        toast.success(msg, {
+          description: `Your ${outToken} balance will update shortly.`,
+          duration: 7000,
+        })
         setQuote(null)
         setAmount('')
       })
       .catch((e: unknown) => {
-        setErrorMsg(parseOnchainError(e))
+        const msg = parseOnchainError(e)
+        setErrorMsg(msg)
+        toast.error('Swap failed', { description: msg })
       })
       .finally(() => {
         setSwapping(false)

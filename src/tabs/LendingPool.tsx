@@ -1,12 +1,14 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt, useSwitchChain } from 'wagmi'
 import { Landmark, Lock } from 'lucide-react'
+import { toast } from 'sonner'
 import { Card, CardLabel, CardValue } from '@/components/Card'
 import { TxButton } from '@/components/TxButton'
 import { AmountInput } from '@/components/AmountInput'
 import { TxStatus } from '@/components/TxStatus'
 import { USDC_ADDRESS, ERC20_ABI, LENDING_POOL_ABI, LENDING_POOL_ADDRESS, ARC_TESTNET_CHAIN_ID } from '@/lib/contracts'
 import { parseUsdc, formatUsdc, parseOnchainError } from '@/lib/utils'
+import { buildTxExplorerUrl } from '@/onchain-facts'
 
 const NOT_DEPLOYED = !LENDING_POOL_ADDRESS
 const POOL_ADDR = LENDING_POOL_ADDRESS as `0x${string}` || '0x0000000000000000000000000000000000000001'
@@ -60,6 +62,24 @@ export function LendingPoolTab() {
 
   const { writeContract, data: hash, isPending, reset } = useWriteContract()
   const { isLoading: isConfirming, isSuccess, isError, error } = useWaitForTransactionReceipt({ hash })
+
+  // Toasts
+  useEffect(() => {
+    if (isSuccess && hash) {
+      const explorerAction = { label: 'View tx', onClick: () => window.open(buildTxExplorerUrl(ARC_TESTNET_CHAIN_ID, hash), '_blank') }
+      if (mode === 'lend') {
+        if (lendTab === 'deposit') toast.success(`Deposited ${lendAmount} USDC as liquidity`, { description: 'Earning 5% APY via share inflation.', action: explorerAction, duration: 6000 })
+        else toast.success(`Withdrew liquidity`, { description: 'USDC returned to your wallet.', action: explorerAction, duration: 6000 })
+      } else {
+        if (loanIdInput) toast.success(`Loan #${loanIdInput} repaid`, { description: 'Collateral released back to your wallet.', action: explorerAction, duration: 6000 })
+        else toast.success(`Borrowed ${borrowAmount} USDC`, { description: 'Repay within 30 days to avoid liquidation.', action: explorerAction, duration: 6000 })
+      }
+    }
+  }, [isSuccess, hash]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (isError && error) toast.error('Transaction failed', { description: parseOnchainError(error) })
+  }, [isError, error])
 
   function doApproveAndCall(spendAmount: bigint, fn: () => void) {
     if ((allowance ?? 0n) >= spendAmount) { fn(); return }

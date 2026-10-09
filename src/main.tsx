@@ -73,7 +73,15 @@ createRoot(document.getElementById('root')!).render(
         <ConnectKitProvider>
           <App />
           <StudioWatermark />
-          <Toaster position="top-center" />
+          <Toaster
+            position="top-center"
+            richColors
+            closeButton
+            toastOptions={{
+              style: { fontFamily: 'DM Sans, system-ui, sans-serif', fontSize: '13px' },
+              classNames: { toast: 'shadow-lg' },
+            }}
+          />
         </ConnectKitProvider>
       </QueryClientProvider>
     </WagmiProvider>

@@ -1,11 +1,13 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt, useSwitchChain } from 'wagmi'
 import { Zap, Lock } from 'lucide-react'
+import { toast } from 'sonner'
 import { Card, CardLabel, CardValue } from '@/components/Card'
 import { TxButton } from '@/components/TxButton'
 import { TxStatus } from '@/components/TxStatus'
 import { USDC_ADDRESS, ERC20_ABI, API_PAYMENTS_ABI, API_PAYMENTS_ADDRESS, ARC_TESTNET_CHAIN_ID } from '@/lib/contracts'
 import { parseOnchainError, formatUsdc } from '@/lib/utils'
+import { buildTxExplorerUrl } from '@/onchain-facts'
 
 const NOT_DEPLOYED = !API_PAYMENTS_ADDRESS
 const ADDR = API_PAYMENTS_ADDRESS as `0x${string}` || '0x0000000000000000000000000000000000000001'
@@ -56,6 +58,22 @@ export function ApiPaymentsTab() {
 
   const { writeContract, data: hash, isPending, reset } = useWriteContract()
   const { isLoading: isConfirming, isSuccess, isError, error } = useWaitForTransactionReceipt({ hash })
+
+  // Toasts
+  useEffect(() => {
+    if (isSuccess && hash) {
+      toast.success(`Purchased ${count} credits for ${selectedApi.name}`, {
+        description: `Cost: ${(count * parseFloat(selectedApi.priceDisplay)).toFixed(3)} USDC. Credits are ready to use.`,
+        action: { label: 'View tx', onClick: () => window.open(buildTxExplorerUrl(ARC_TESTNET_CHAIN_ID, hash), '_blank') },
+        duration: 6000,
+      })
+      void refetchCredits()
+    }
+  }, [isSuccess, hash]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (isError && error) toast.error('Purchase failed', { description: parseOnchainError(error) })
+  }, [isError, error])
 
   const pricePerCall = apiInfo ? apiInfo[0] : 0n
   const count = Math.max(1, parseInt(callCount) || 0)

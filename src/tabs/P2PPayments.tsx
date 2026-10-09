@@ -1,13 +1,15 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt, useSwitchChain } from 'wagmi'
 import { isAddress } from 'viem'
-import { Send, ArrowDownLeft } from 'lucide-react'
+import { Send, ArrowDownLeft, Copy, CheckCheck } from 'lucide-react'
+import { toast } from 'sonner'
 import { Card, CardLabel, CardValue } from '@/components/Card'
 import { TxButton } from '@/components/TxButton'
 import { AmountInput } from '@/components/AmountInput'
 import { TxStatus } from '@/components/TxStatus'
 import { USDC_ADDRESS, ERC20_ABI, ARC_TESTNET_CHAIN_ID } from '@/lib/contracts'
-import { parseUsdc, formatUsdc, parseOnchainError } from '@/lib/utils'
+import { parseUsdc, formatUsdc, parseOnchainError, formatAddress } from '@/lib/utils'
+import { buildTxExplorerUrl } from '@/onchain-facts'
 
 export function P2PPayments() {
   const { address, chainId } = useAccount()
@@ -19,6 +21,7 @@ export function P2PPayments() {
   const [requestFrom, setRequestFrom] = useState('')
   const [requestAmount, setRequestAmount] = useState('')
   const [errorMsg, setErrorMsg] = useState('')
+  const [copied, setCopied] = useState(false)
 
   const { data: balance } = useReadContract({
     address: USDC_ADDRESS,
@@ -33,6 +36,26 @@ export function P2PPayments() {
   const { isLoading: isConfirming, isSuccess, isError, error } = useWaitForTransactionReceipt({ hash })
 
   const wrongChain = chainId !== ARC_TESTNET_CHAIN_ID
+
+  // Toast on success / error
+  useEffect(() => {
+    if (isSuccess && hash) {
+      toast.success(`Sent ${amount} USDC to ${formatAddress(recipient)}`, {
+        description: 'Transaction confirmed on Arc Testnet',
+        action: {
+          label: 'View tx',
+          onClick: () => window.open(buildTxExplorerUrl(ARC_TESTNET_CHAIN_ID, hash), '_blank'),
+        },
+        duration: 6000,
+      })
+    }
+  }, [isSuccess, hash]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (isError && error) {
+      toast.error('Transaction failed', { description: parseOnchainError(error) })
+    }
+  }, [isError, error])
 
   function handleSend() {
     setErrorMsg('')
@@ -161,10 +184,17 @@ export function P2PPayments() {
                 <p className="text-xs text-[var(--subtle)] mb-1">Payment link</p>
                 <p className="mono text-xs text-[var(--ink)] break-all">{requestLink}</p>
                 <button
-                  onClick={() => { void navigator.clipboard.writeText(requestLink) }}
-                  className="mt-2 text-xs text-[var(--accent-hover)] font-semibold hover:underline"
+                  onClick={() => {
+                    void navigator.clipboard.writeText(requestLink).then(() => {
+                      setCopied(true)
+                      toast.success('Payment link copied!', { description: 'Share it with whoever needs to pay you.' })
+                      setTimeout(() => setCopied(false), 2000)
+                    })
+                  }}
+                  className="mt-2 flex items-center gap-1 text-xs text-[var(--accent-hover)] font-semibold hover:underline"
                 >
-                  Copy link
+                  {copied ? <CheckCheck size={12} className="text-green-500" /> : <Copy size={12} />}
+                  {copied ? 'Copied!' : 'Copy link'}
                 </button>
               </div>
             )}

@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useAccount } from 'wagmi'
 import { ConnectKitButton } from 'connectkit'
 import { Send, PiggyBank, Landmark, Zap, ArrowLeftRight, Wallet, X } from 'lucide-react'
+import { toast } from 'sonner'
 import { P2PPayments } from '@/tabs/P2PPayments'
 import { SavingsPoolTab } from '@/tabs/SavingsPool'
 import { LendingPoolTab } from '@/tabs/LendingPool'
@@ -27,11 +28,26 @@ export default function App() {
   })
   const [bannerDismissed, setBannerDismissed] = useState(false)
   const [mounted, setMounted] = useState(false)
+  const prevConnected = useRef(false)
 
   useEffect(() => {
     const t = setTimeout(() => setMounted(true), 800)
     return () => clearTimeout(t)
   }, [])
+
+  // Wallet connect / disconnect toasts
+  useEffect(() => {
+    if (isConnected && !prevConnected.current) {
+      toast.success('Wallet connected', {
+        description: address ? `${address.slice(0, 6)}...${address.slice(-4)} on Arc Testnet` : 'Ready to use Arc Bay',
+        duration: 4000,
+      })
+    }
+    if (!isConnected && prevConnected.current) {
+      toast.info('Wallet disconnected')
+    }
+    prevConnected.current = isConnected
+  }, [isConnected, address])
 
   const showBanner = mounted && !isConnected && !bannerDismissed
 
